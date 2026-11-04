@@ -1,20 +1,35 @@
+use super::super::{Window, Workspace};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::process::Command;
-use super::super::{Window, Workspace};
 
 #[derive(Deserialize)]
-struct WsJson { id: i64, name: String, #[serde(default)] windows: usize }
-#[derive(Deserialize)]
-struct ClientJson {
-    #[serde(default)] title: String, #[serde(default, rename="class")] app: String,
-    at: [i64;2], size: [i64;2], workspace: WsRef
+struct WsJson {
+    id: i64,
+    name: String,
+    #[serde(default)]
+    windows: usize,
 }
 #[derive(Deserialize)]
-struct WsRef { id: i64 }
+struct ClientJson {
+    #[serde(default)]
+    title: String,
+    #[serde(default, rename = "class")]
+    app: String,
+    at: [i64; 2],
+    size: [i64; 2],
+    workspace: WsRef,
+}
+#[derive(Deserialize)]
+struct WsRef {
+    id: i64,
+}
 
 fn hypr(args: &[&str]) -> Result<String> {
-    let out = Command::new("hyprctl").args(args).output().context("Could not execute hyprctl; is Hyprland running?")?;
+    let out = Command::new("hyprctl")
+        .args(args)
+        .output()
+        .context("Could not execute hyprctl; is Hyprland running?")?;
     if !out.status.success() {
         anyhow::bail!(
             "hyprctl {:?} failed (status {}): {}{}",
@@ -27,19 +42,37 @@ fn hypr(args: &[&str]) -> Result<String> {
     Ok(String::from_utf8(out.stdout)?)
 }
 pub fn workspaces() -> Result<Vec<Workspace>> {
-    let raw = hypr(&["-j","workspaces"])?;
+    let raw = hypr(&["-j", "workspaces"])?;
     let items: Vec<WsJson> = serde_json::from_str(&raw)?;
-    let active: i64 = serde_json::from_str::<serde_json::Value>(&hypr(&["-j","activeworkspace"])? )?["id"].as_i64().unwrap_or(-999);
-    let mut out: Vec<_> = items.into_iter().map(|w| Workspace{id:w.id,name:w.name,windows:w.windows,active:w.id==active}).collect();
+    let active: i64 =
+        serde_json::from_str::<serde_json::Value>(&hypr(&["-j", "activeworkspace"])?)?["id"]
+            .as_i64()
+            .unwrap_or(-999);
+    let mut out: Vec<_> = items
+        .into_iter()
+        .map(|w| Workspace {
+            id: w.id,
+            name: w.name,
+            windows: w.windows,
+            active: w.id == active,
+        })
+        .collect();
     out.sort_by_key(|w| w.id);
     Ok(out)
 }
 pub fn windows(workspace: i64) -> Result<Vec<Window>> {
-    let raw = hypr(&["-j","clients"])?;
+    let raw = hypr(&["-j", "clients"])?;
     let clients: Vec<ClientJson> = serde_json::from_str(&raw)?;
-    Ok(clients.into_iter().filter(|c| c.workspace.id==workspace).map(|c| Window{
-        title:c.title,app:c.app,at:c.at,size:c.size
-    }).collect())
+    Ok(clients
+        .into_iter()
+        .filter(|c| c.workspace.id == workspace)
+        .map(|c| Window {
+            title: c.title,
+            app: c.app,
+            at: c.at,
+            size: c.size,
+        })
+        .collect())
 }
 /// Switch workspaces across both Hyprland config providers. Hyprland 0.54+
 /// Lua configs require dispatcher objects; legacy hyprlang configs still use
@@ -76,6 +109,8 @@ fn uses_lua_config_provider() -> bool {
         })
 }
 pub fn active_workspace() -> Result<i64> {
-    let v: serde_json::Value = serde_json::from_str(&hypr(&["-j","activeworkspace"] )?)?;
-    v["id"].as_i64().context("Could not read active workspace id")
+    let v: serde_json::Value = serde_json::from_str(&hypr(&["-j", "activeworkspace"])?)?;
+    v["id"]
+        .as_i64()
+        .context("Could not read active workspace id")
 }

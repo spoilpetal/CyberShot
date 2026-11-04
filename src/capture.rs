@@ -1,14 +1,20 @@
+use crate::{clipboard, config, platform};
 use anyhow::{Context, Result};
 use chrono::Local;
 use std::{path::PathBuf, thread, time::Duration};
-use crate::{config, platform, clipboard};
 
 fn output_path(label: &str) -> Result<PathBuf> {
     let dir = config::screenshot_dir()?;
-    Ok(dir.join(format!("{}-{}.png", Local::now().format("%Y%m%d-%H%M%S-%3f"), label)))
+    Ok(dir.join(format!(
+        "{}-{}.png",
+        Local::now().format("%Y%m%d-%H%M%S-%3f"),
+        label
+    )))
 }
 
-pub fn current() -> Result<()> { full() }
+pub fn current() -> Result<()> {
+    full()
+}
 
 pub fn full() -> Result<()> {
     let path = output_path("screen")?;
@@ -34,7 +40,9 @@ pub fn workspace(id: i64) -> Result<()> {
     }
     let path = output_path(&format!("workspace-{id}"))?;
     let result = platform::capture_full(&path);
-    if active != id { let _ = platform::switch_workspace(active); }
+    if active != id {
+        let _ = platform::switch_workspace(active);
+    }
     result?;
     println!("Saved: {}", path.display());
     copy_image(&path)
@@ -42,7 +50,8 @@ pub fn workspace(id: i64) -> Result<()> {
 
 pub fn window_by_index(workspace: i64, index: usize, no_header: bool) -> Result<()> {
     let list = platform::windows(workspace)?;
-    let win = list.get(index.checked_sub(1).context("Window numbers start at 1")?)
+    let win = list
+        .get(index.checked_sub(1).context("Window numbers start at 1")?)
         .ok_or_else(|| anyhow::anyhow!("Window {index} not found in workspace {workspace}"))?;
     window_geometry(win.at, win.size, workspace, &win.title, no_header)
 }
@@ -51,7 +60,13 @@ pub fn window(workspace: i64, index: usize, no_header: bool) -> Result<()> {
     window_by_index(workspace, index, no_header)
 }
 
-fn window_geometry(at: [i64; 2], size: [i64; 2], workspace: i64, title: &str, no_header: bool) -> Result<()> {
+fn window_geometry(
+    at: [i64; 2],
+    size: [i64; 2],
+    workspace: i64,
+    title: &str,
+    no_header: bool,
+) -> Result<()> {
     let active = platform::active_workspace()?;
     if active != workspace {
         platform::switch_workspace(workspace)?;
@@ -62,10 +77,18 @@ fn window_geometry(at: [i64; 2], size: [i64; 2], workspace: i64, title: &str, no
     // capture rectangle. Clamp dimensions so tiny windows fail clearly.
     let header = if no_header { 32 } else { 0 };
     let height = size[1] - header;
-    if height <= 0 { anyhow::bail!("Window is too small to crop its title bar"); }
-    let path = output_path(if no_header { "window-no-header" } else { "window" })?;
+    if height <= 0 {
+        anyhow::bail!("Window is too small to crop its title bar");
+    }
+    let path = output_path(if no_header {
+        "window-no-header"
+    } else {
+        "window"
+    })?;
     let result = platform::capture_rect(at[0], at[1] + header, size[0], height, &path);
-    if active != workspace { let _ = platform::switch_workspace(active); }
+    if active != workspace {
+        let _ = platform::switch_workspace(active);
+    }
     result.with_context(|| format!("Could not capture window: {title}"))?;
     println!("Saved: {}", path.display());
     copy_image(&path)

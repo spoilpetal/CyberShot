@@ -42,6 +42,10 @@ CyberShot is a standalone, keyboard-driven screenshot utility. It has two applic
 | `csb show wind` | List windows in the selected/current workspace |
 | `csb location` | Print the screenshot directory |
 | `csb select` | Start the platform region selector |
+| `csb keybind enable [--shortcut "..."]` | Enable the externally assigned shortcut trigger |
+| `csb keybind disable` | Disable the shortcut trigger without removing the OS shortcut |
+| `csb keybind status` | Show shortcut-trigger state |
+| `csb hotkey` | Run region capture when the shortcut trigger is enabled |
 
 `csb capture wind` uses the order shown by `csb show wind`. `--noh` excludes a fixed 32-pixel strip at the top of the selected window; this is intended for title bars and may need adjustment for unusual desktop themes or scaling.
 
@@ -138,6 +142,42 @@ The installer checks for existing `cybershot`/`csb` commands and known desktop s
 
 The uninstaller is interactive. You can remove either command name independently, remove both while keeping data, or choose a full uninstall. A full uninstall asks separately before deleting settings and the default screenshots folder; screenshots and settings are preserved unless you confirm their deletion.
 
+## Keyboard shortcut toggle (all supported platforms)
+
+CyberShot provides one cross-platform command for a desktop/OS keyboard shortcut: `csb hotkey`. The operating system or desktop environment registers the physical key combination; CyberShot does not install a background hotkey daemon or silently edit system shortcut settings.
+
+First enable the trigger:
+
+```sh
+csb keybind enable --shortcut "Super+Shift+S"
+csb keybind status
+```
+
+Use your preferred shortcut label in place of the example. Then create a custom shortcut in your desktop/OS settings and set its command to `csb hotkey` (or the full path to the executable if `csb` is not on the PATH). The shortcut launches the existing native region selector. To temporarily stop it working without deleting the OS shortcut, run:
+
+```sh
+csb keybind disable
+```
+
+Turn it back on with `csb keybind enable`. The optional `--shortcut` value is a display label only; it does not register or validate a physical key combination.
+
+### Linux
+
+- **Hyprland (traditional hyprland.conf):** add a bind such as `bind = SUPER SHIFT, S, exec, csb hotkey`, then reload the configuration. If your Hyprland setup uses the Lua config provider, add the equivalent command binding using the binding API for your installed config; the traditional line above is not Lua syntax.
+- **GNOME:** Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts. Add a shortcut with command `csb hotkey`, then assign the desired key combination.
+- **KDE Plasma:** System Settings → Keyboard → Shortcuts → Add New → Command or Script. Set the command to `csb hotkey` and assign a key combination.
+- **Other desktop environments:** use the desktop's custom-shortcut settings and launch `csb hotkey`.
+
+### Windows
+
+Create a Windows shortcut whose target runs `csb hotkey` (or the full path to `cybershot.exe` followed by `hotkey`). Open the shortcut's Properties and set its **Shortcut key**. Windows may require the shortcut to be on the Desktop or in the Start Menu for the shortcut key to work. Enable the CyberShot trigger with `csb keybind enable` first.
+
+### macOS
+
+Create an Automator Quick Action that receives no input and runs the shell command `csb hotkey`. Save it, then open System Settings → Keyboard → Keyboard Shortcuts → Services and assign a shortcut to that Quick Action. Enable the CyberShot trigger with `csb keybind enable` first. Ensure the command is available in the shell PATH used by the Quick Action; otherwise use the full executable path.
+
+**Important:** the CLI toggle controls whether `csb hotkey` performs a capture. It does not create, remove, or globally register the physical key combination. That registration remains under your control in the platform's own shortcut settings.
+
 ## Configuration and screenshots
 
 - Default screenshot folder: the platform Pictures directory under `CyberShot` (for example `~/Pictures/CyberShot`).
@@ -155,7 +195,7 @@ A green CI run verifies compilation on the corresponding GitHub-hosted runners. 
 
 - Native workspace switching is implemented for Hyprland and X11. On Windows and macOS, CyberShot reports the current desktop and captures it; switching between virtual desktops/Spaces is not implemented.
 - Generic non-Hyprland Wayland window discovery is not available because Wayland does not provide a universal window-enumeration protocol. Full-screen and region capture remain available through `grim`/`slurp`.
-- Global shortcut registration is not bundled. Configure a shortcut in your desktop environment to launch `csb capture region` or `csb`.
+- Global shortcut registration is intentionally managed by the user in the operating system/desktop. Configure it to launch `csb hotkey`, then use `csb keybind enable` / `disable` to control the trigger.
 - The file-manager copy buffer is internal to the active TUI session.
 
 ## Contributing and bug reports

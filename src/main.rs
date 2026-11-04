@@ -1,10 +1,10 @@
 mod app;
-mod clipboard;
 mod capture;
+mod clipboard;
 mod config;
-mod platform;
 #[cfg(target_os = "linux")]
 mod overlay;
+mod platform;
 mod tui;
 
 use anyhow::Result;
@@ -12,7 +12,11 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "cybershot", version, about = "Terminal-first screenshot utility")]
+#[command(
+    name = "cybershot",
+    version,
+    about = "Terminal-first screenshot utility"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -53,12 +57,32 @@ enum Command {
     /// Print the screenshot directory.
     Location,
 
+    /// Enable, disable, or inspect the external keyboard-shortcut trigger.
+    Keybind {
+        #[command(subcommand)]
+        action: KeybindAction,
+    },
+
+    /// Region-capture entry point for a shortcut configured in your OS/desktop.
+    Hotkey,
+
     /// Internal clipboard provider.
     #[command(name = "__clipboard-serve", hide = true)]
-    ClipboardServe {
-        payload: PathBuf,
-        ready: PathBuf,
+    ClipboardServe { payload: PathBuf, ready: PathBuf },
+}
+
+#[derive(Subcommand)]
+enum KeybindAction {
+    /// Enable the `csb hotkey` trigger.
+    Enable {
+        /// Optional label for the shortcut configured in your desktop.
+        #[arg(long)]
+        shortcut: Option<String>,
     },
+    /// Disable the `csb hotkey` trigger.
+    Disable,
+    /// Show the trigger state.
+    Status,
 }
 
 fn main() -> Result<()> {
@@ -79,9 +103,62 @@ fn main() -> Result<()> {
             }
             #[cfg(not(target_os = "linux"))]
             capture::region()?;
-        },
+        }
         Some(Command::Location) => {
             println!("{}", config::screenshot_dir()?.display());
+        }
+        Some(Command::Keybind { action }) => {
+            let mut cfg = config::load()?;
+            match action {
+                KeybindAction::Enable { shortcut } => {
+                    if let Some(value) = shortcut {
+                        let value = value.trim();
+                        if value.is_empty() {
+                            anyhow::bail!("Shortcut label cannot be empty");
+                        }
+                        cfg.keybind = Some(value.to_string());
+                    }
+                    cfg.keybind_enabled = true;
+                    config::save(&cfg)?;
+                    println!("CyberShot shortcut trigger enabled.");
+                    println!("Assign your OS/desktop shortcut to run: csb hotkey");
+                    println!(
+                        "Shortcut label: {}",
+                        cfg.keybind.as_deref().unwrap_or("not set")
+                    );
+                }
+                KeybindAction::Disable => {
+                    cfg.keybind_enabled = false;
+                    config::save(&cfg)?;
+                    println!(
+                        "CyberShot shortcut trigger disabled. The OS shortcut can remain configured safely."
+                    );
+                }
+                KeybindAction::Status => {
+                    println!(
+                        "Shortcut trigger: {}",
+                        if cfg.keybind_enabled {
+                            "enabled"
+                        } else {
+                            "disabled"
+                        }
+                    );
+                    println!(
+                        "Shortcut label: {}",
+                        cfg.keybind.as_deref().unwrap_or("not set")
+                    );
+                    println!("OS/desktop shortcut command: csb hotkey");
+                }
+            }
+        }
+        Some(Command::Hotkey) => {
+            if config::load()?.keybind_enabled {
+                capture::region()?;
+            } else {
+                println!(
+                    "CyberShot shortcut trigger is disabled. Run `csb keybind enable` to turn it on."
+                );
+            }
         }
         Some(Command::ClipboardServe { payload, ready }) => {
             clipboard::serve(&payload, &ready)?;
@@ -100,13 +177,9 @@ fn main() -> Result<()> {
                 }
             }
             "wind" | "window" | "windows" => {
-                let selected_workspace = config::load()?
-                    .selected_workspace
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "No workspace selected. Run `csb sl work <number>` first."
-                        )
-                    })?;
+                let selected_workspace = config::load()?.selected_workspace.ok_or_else(|| {
+                    anyhow::anyhow!("No workspace selected. Run `csb sl work <number>` first.")
+                })?;
 
                 for (i, window) in platform::windows(selected_workspace)?.iter().enumerate() {
                     println!("{:>2}. {}  ({})", i + 1, window.title, window.app);
@@ -144,8 +217,8 @@ fn main() -> Result<()> {
             window,
         }) => {
             if let Some(workspace_id) = workspace {
-                let window_number = window
-                    .ok_or_else(|| anyhow::anyhow!("--workspace requires --window"))?;
+                let window_number =
+                    window.ok_or_else(|| anyhow::anyhow!("--workspace requires --window"))?;
                 capture::window(workspace_id, window_number, no_header)?;
             } else {
                 match target.as_str() {
@@ -155,46 +228,30 @@ fn main() -> Result<()> {
                         let workspace_id = if let Some(number) = number {
                             let workspaces = platform::workspaces()?;
                             let chosen = workspaces
-                                .get(
-                                    number.checked_sub(1).ok_or_else(|| {
-                                        anyhow::anyhow!("Workspace numbers start at 1")
-                                    })?,
-                                )
+                                .get(number.checked_sub(1).ok_or_else(|| {
+                                    anyhow::anyhow!("Workspace numbers start at 1")
+                                })?)
                                 .ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "Workspace number {number} does not exist"
-                                    )
+                                    anyhow::anyhow!("Workspace number {number} does not exist")
                                 })?;
                             chosen.id
                         } else {
-                            config::load()?
-                                .selected_workspace
-                                .ok_or_else(|| {
-                                    anyhow::anyhow!(
-                                        "Select a workspace first: `csb sl work <number>`"
-                                    )
-                                })?
+                            config::load()?.selected_workspace.ok_or_else(|| {
+                                anyhow::anyhow!("Select a workspace first: `csb sl work <number>`")
+                            })?
                         };
 
                         capture::workspace(workspace_id)?;
                     }
                     "wind" | "window" => {
-                        let workspace_id = config::load()?
-                            .selected_workspace
-                            .ok_or_else(|| {
-                                anyhow::anyhow!(
-                                    "Select a workspace first: `csb sl work <number>`"
-                                )
-                            })?;
+                        let workspace_id = config::load()?.selected_workspace.ok_or_else(|| {
+                            anyhow::anyhow!("Select a workspace first: `csb sl work <number>`")
+                        })?;
                         let window_number = number.ok_or_else(|| {
                             anyhow::anyhow!("Usage: csb capture wind <number> [-noh]")
                         })?;
 
-                        capture::window_by_index(
-                            workspace_id,
-                            window_number,
-                            no_header,
-                        )?;
+                        capture::window_by_index(workspace_id, window_number, no_header)?;
                     }
                     "current" => capture::current()?,
                     "full" => capture::full()?,
