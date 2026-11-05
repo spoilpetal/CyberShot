@@ -1,4 +1,4 @@
-# CyberShot
+<h1 align="center">CyberShot</h1>
 
 <p align="center">
   <strong>A terminal-first screenshot tool built with Rust</strong><br>
@@ -11,7 +11,7 @@
   <a href="https://github.com/zaynkhan100110/CyberShot/releases">Releases</a>
 </p>
 
-CyberShot is a standalone, keyboard-driven screenshot utility. It has two application TUIs: a combined capture/settings interface and a screenshot History. The `files` command opens a separate file-manager interface. It does not require CyberClip or another Cyber* application.
+CyberShot is a standalone, keyboard-driven screenshot utility. It has two application TUIs: a combined capture/settings interface and a screenshot History. The `files` command opens a separate file-manager interface.
 
 ## Features
 
