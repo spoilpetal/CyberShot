@@ -32,21 +32,21 @@ CyberShot is a standalone, keyboard-driven screenshot utility. It has two applic
 
 ## System File Manager
 
-![File Manager](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/file_manager.png)
+![File Manager](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/file_manager.png)
 
 - [About History](#general)
 
 ### Tui History   
 
-![History](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/tui-history.png)
+![History](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/tui-history.png)
 
 ### Workplace Show
 
-![Workplace](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/workspace_show.png)
+![Workplace](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/workspace_show.png)
  
 ### Workplace window show
 
-![Window](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/window_show.png)
+![Window](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/window_show.png)
 
 
 
