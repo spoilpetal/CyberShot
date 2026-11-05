@@ -25,6 +25,31 @@ CyberShot is a standalone, keyboard-driven screenshot utility. It has two applic
 - Configurable screenshot directory.
 - No dependency on CyberClip.
 
+
+
+## ScreenShot (using <a href="https://github.com/zaynkhan100110/CyberShot">CyberShot</a>)
+
+
+## System File Manager
+
+![File Manager](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/file_manager.png)
+
+- [About History](#general)
+
+### Tui History   
+
+![History](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/tui-history.png)
+
+### Workplace Show
+
+![Workplace](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/workspace_show.png)
+ 
+### Workplace window show
+
+![Window](https://github.com/spoilpetal/Picture_Vault/blob/main/CyberShot/CyberShot-0.2.0/window_show.png)
+
+
+
 ## Commands
 
 | Command | Description |
@@ -197,6 +222,13 @@ A green CI run verifies compilation on the corresponding GitHub-hosted runners. 
 - Generic non-Hyprland Wayland window discovery is not available because Wayland does not provide a universal window-enumeration protocol. Full-screen and region capture remain available through `grim`/`slurp`.
 - Global shortcut registration is intentionally managed by the user in the operating system/desktop. Configure it to launch `csb hotkey`, then use `csb keybind enable` / `disable` to control the trigger.
 - The file-manager copy buffer is internal to the active TUI session.
+
+## General
+- Why history don't show any logs ? <br>
+Ans.The [History] only records when you capture using cli
+- Where does mt captured saved ? <br>
+Ans.The screenshot saved inside the same directory from where from you give commands in cli or capture using Tui a folder named [CyberShot] 
+
 
 ## Contributing and bug reports
 
