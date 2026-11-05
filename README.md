@@ -225,9 +225,11 @@ A green CI run verifies compilation on the corresponding GitHub-hosted runners. 
 
 ## General
 - Why history don't show any logs ? <br>
-Ans.The ``History`` only records when you capture using cli
+ Ans.The ``History`` only records when you capture using cli
 - Where does my captured saved ? <br>
-Ans.The screenshot saved inside the same directory from where you give commands in cli or capture using Tui a folder named ```CyberShot``` 
+ Ans.The screenshot saved inside the same directory from where you give commands in cli or capture using Tui a folder named ```CyberShot```
+- Why the `File Manager` isn't behaving like [CyberClip](https://github.com/spoilpetal/CyberClip) ? </br>
+ Ans. The `File Manager` inside [CyberShot](https://github.com/zaynkhan100110/CyberShot) is specifically designed for preview image files in full screen. But this have some basic functionality 
 
 
 ## Contributing and bug reports
