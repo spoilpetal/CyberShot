@@ -1,4 +1,4 @@
-# CyberShot
+<h1 align="center">CyberShot</h1>
 
 <p align="center">
   <strong>A terminal-first screenshot tool built with Rust</strong><br>
@@ -24,6 +24,33 @@ CyberShot is a standalone, keyboard-driven screenshot utility. It has two applic
 - Native image clipboard integration for Linux Wayland/X11, Windows, and macOS.
 - Configurable screenshot directory.
 - No dependency on CyberClip.
+
+
+## Screenshot (Using <a href="https://github.com/zaynkhan100110/CyberShot">CyberShot</a>)
+
+### Main Interface 
+
+![Main interface](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main//CyberShot_v0.3.0/CyberShot_main.png)
+
+
+
+### Inside a Workplace
+
+![Inside worplace](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot_v0.3.0/inside_workplace.png)
+
+
+### Inside Window
+![Inside window](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot_v0.3.0/inside_window.png)
+
+
+### File Browser
+
+![File manager](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot_v0.3.0/cybershot_file_brower.png)
+
+
+### History   [Faq](#general)
+![History](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot_v0.3.0/cybershot_history.png)
+
 
 ## Commands
 
@@ -220,6 +247,15 @@ A green CI run verifies compilation on the corresponding GitHub-hosted runners. 
 Please include your OS, desktop/session (Hyprland, X11, GNOME Wayland, KDE Wayland, etc.), CyberShot version, command used, and the complete error output when opening an issue:
 
 <https://github.com/zaynkhan100110/CyberShot/issues>
+
+## General
+
+- Why the `History` page is empty ? <br>
+  Ans. `History` page only show logs when you captured using cli
+- The background i can see in pictures above are those this application theme ? </br>
+  Ans. No ! the background you saw was for my arch Cyberpunk setup ! You will get see as your system
+
+
 
 ## License
 
