@@ -17,6 +17,7 @@ pub struct Window {
     pub app: String,
     pub at: [i64; 2],
     pub size: [i64; 2],
+    pub border_size: i64,
 }
 
 #[cfg(target_os = "linux")]
@@ -201,6 +202,7 @@ fn x11_windows(workspace: i64) -> Result<Vec<Window>> {
             app: "X11 window".into(),
             at: [x, y],
             size: [w, h],
+            border_size: 0,
         });
     }
     Ok(result)
@@ -230,6 +232,7 @@ public class WinList { public delegate bool EnumProc(IntPtr h, IntPtr l); [DllIm
             app: "Windows".into(),
             at: [v["x"].as_i64().unwrap_or(0), v["y"].as_i64().unwrap_or(0)],
             size: [v["w"].as_i64().unwrap_or(0), v["h"].as_i64().unwrap_or(0)],
+            border_size: 0,
         });
     }
     Ok(result)
@@ -269,6 +272,7 @@ return output"#;
             title: f[2].into(),
             at: [n(3), n(4)],
             size: [n(5), n(6)],
+            border_size: 0,
         });
     }
     Ok(result)
@@ -414,7 +418,7 @@ pub fn capture_region(path: &Path) -> Result<()> {
             if !o.status.success() {
                 anyhow::bail!("grim region capture failed");
             }
-        } else {
+        } else if std::env::var_os("DISPLAY").is_some() {
             let s = Command::new("slop")
                 .args(["-f", "%g"])
                 .output()
@@ -430,6 +434,10 @@ pub fn capture_region(path: &Path) -> Result<()> {
             if !o.status.success() {
                 anyhow::bail!("ImageMagick region capture failed");
             }
+        } else {
+            anyhow::bail!(
+                "Region selection requires a graphical session (Wayland or X11); use CyberShot's CLI/TUI features in a pure TTY"
+            );
         }
     }
     #[cfg(target_os = "macos")]

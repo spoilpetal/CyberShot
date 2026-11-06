@@ -26,19 +26,26 @@ fn terminal() -> Result<Terminal<CrosstermBackend<io::Stdout>>> {
 
 pub fn capture_tui() -> Result<()> {
     let mut term = terminal()?;
-
     let result = (|| -> Result<()> {
-        let mut stage = 0u8;
+        let mut stage = 0u8; // 0 workspaces, 1 workspace contents, 2 window mode, 3 settings
         let mut selected = 0usize;
         let mut ws_selected = 0usize;
         let mut ws_id = 0i64;
+        let mut window_selected = 0usize;
         let mut edit_dir: Option<String> = None;
-        let mut msg = String::from("UP/DOWN: Navigate   ENTER: Select   ESC: Exit");
+        let mut msg = String::from("Choose a workspace   ↑/↓ Navigate   ENTER Select   ESC Exit");
 
         loop {
-            let work = platform::workspaces().unwrap_or_default();
-            let generic_capture = work.is_empty();
-            let wins = if stage == 1 {
+            let work = match platform::workspaces() {
+                Ok(items) => items,
+                Err(error) => {
+                    if stage == 0 {
+                        msg = format!("Workspace discovery unavailable: {error}");
+                    }
+                    vec![]
+                }
+            };
+            let wins = if stage == 1 || stage == 2 {
                 match platform::windows(ws_id) {
                     Ok(items) => items,
                     Err(error) => {
@@ -51,25 +58,34 @@ pub fn capture_tui() -> Result<()> {
             };
             let settings = config::load()?;
 
-            let items: Vec<ListItem> = if stage == 0 && generic_capture {
-                vec![
-                    ListItem::new("  Full-screen capture"),
-                    ListItem::new("  Region capture"),
-                ]
-            } else if stage == 0 {
-                work.iter()
+            let items: Vec<ListItem> = match stage {
+                0 => work
+                    .iter()
                     .map(|w| {
-                        ListItem::new(format!("  {}   {}   [{} windows]", w.id, w.name, w.windows))
+                        ListItem::new(format!(
+                            "  {}  {}  [{} windows]{}",
+                            w.id,
+                            w.name,
+                            w.windows,
+                            if w.active { "  • active" } else { "" }
+                        ))
                     })
-                    .collect()
-            } else if stage == 1 {
-                wins.iter()
-                    .map(|w| ListItem::new(format!("  {}  /  {}", w.title, w.app)))
-                    .collect()
-            } else {
-                vec![]
+                    .collect(),
+                1 => {
+                    let mut choices = vec![ListItem::new("  Capture entire workspace")];
+                    choices.extend(
+                        wins.iter()
+                            .map(|w| ListItem::new(format!("  {}  /  {}", w.title, w.app))),
+                    );
+                    choices
+                }
+                2 => vec![
+                    ListItem::new("  Full window (include compositor borders)"),
+                    ListItem::new("  Window content (exclude compositor borders)"),
+                    ListItem::new("  Page area (select webpage only; exclude browser UI)"),
+                ],
+                _ => vec![],
             };
-
             if !items.is_empty() {
                 selected = selected.min(items.len() - 1);
             } else {
@@ -77,158 +93,81 @@ pub fn capture_tui() -> Result<()> {
             }
 
             term.draw(|f| {
-                let outer = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([
-                        Constraint::Length(3),
-                        Constraint::Min(6),
-                        Constraint::Length(3),
-                    ])
+                let outer = Layout::default().direction(Direction::Vertical)
+                    .constraints([Constraint::Length(3), Constraint::Min(6), Constraint::Length(3)])
                     .split(f.area());
-
-                f.render_widget(
-                    Paragraph::new(if stage == 2 { "  CYBERSHOT  /  CAPTURE + SETTINGS" } else { "  CYBERSHOT  /  CAPTURE CONTROL" })
-                        .style(
-                            Style::default()
-                                .fg(Color::Cyan)
-                                .add_modifier(Modifier::BOLD),
-                        )
-                        .block(
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .border_style(
-                                    Style::default().fg(Color::Cyan)
-                                ),
-                        ),
-                    outer[0],
-                );
-
-                let body = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([
-                        Constraint::Length(25),
-                        Constraint::Min(25),
-                    ])
-                    .split(outer[1]);
-
-                let sidebar_text = if stage == 2 {
-                    format!("SETTINGS\n\nPlatform: {}\n\nScreenshot folder\n{}\n\nPress D to change folder\nESC returns", platform::operating_system(), config::screenshot_dir().map(|p| p.display().to_string()).unwrap_or_default())
-                } else if stage == 0 && generic_capture {
-                    format!(
-                        "MODE\n\nQUICK CAPTURE\n\nPlatform: {}\n\nChoose full-screen\nor region capture.",
-                        platform::operating_system()
-                    )
-                } else if stage == 0 {
-                    format!(
-                        "MODE\n\nWORKSPACE SELECT\n\nAvailable: {}\n\nChoose a workspace\nwith ENTER.",
-                        work.len()
-                    )
-                } else {
-                    let name = work
-                        .iter()
-                        .find(|w| w.id == ws_id)
-                        .map(|w| w.name.as_str())
-                        .unwrap_or("Unknown");
-
-                    format!(
-                        "MODE\n\nWINDOW SELECT\n\nWorkspace: {}\nID: {}\nWindows: {}\n\nBACKSPACE returns\nto workspaces.",
-                        name,
-                        ws_id,
-                        wins.len()
-                    )
+                let heading = match stage {
+                    0 => "CYBERSHOT / SELECT WORKSPACE",
+                    1 => "CYBERSHOT / SELECT WINDOW OR WORKSPACE",
+                    2 => "CYBERSHOT / WINDOW CAPTURE MODE",
+                    _ => "CYBERSHOT / SETTINGS",
                 };
-
-                f.render_widget(
-                    Paragraph::new(sidebar_text)
-                        .style(Style::default().fg(Color::Gray))
-                        .block(
-                            Block::default()
-                                .title(" SYSTEM ")
-                                .borders(Borders::ALL)
-                                .border_style(
-                                    Style::default().fg(Color::DarkGray)
-                                ),
-                        ),
-                    body[0],
-                );
-
-                let title = if stage == 2 { " SETTINGS " } else if stage == 0 && generic_capture {
-                    " QUICK CAPTURE "
-                } else if stage == 0 {
-                    " WORKSPACES "
-                } else {
-                    " WINDOWS "
+                f.render_widget(Paragraph::new(heading).style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD))
+                    .block(Block::default().borders(Borders::ALL).border_style(Style::default().fg(Color::Cyan))), outer[0]);
+                let body = Layout::default().direction(Direction::Horizontal)
+                    .constraints([Constraint::Length(30), Constraint::Min(25)]).split(outer[1]);
+                let sidebar = match stage {
+                    0 => format!("WORKSPACES\n\nPlatform: {}\n\nChoose the desktop workspace whose windows you want to browse.\n\nS  Settings", platform::operating_system()),
+                    1 => {
+                        let name = work.iter().find(|w| w.id == ws_id).map(|w| w.name.as_str()).unwrap_or("Selected workspace");
+                        format!("WORKSPACE\n\n{}\nID: {}\nWindows: {}\n\nChoose the whole workspace or an individual window.", name, ws_id, wins.len())
+                    }
+                    2 => {
+                        let title = wins.get(window_selected).map(|w| w.title.as_str()).unwrap_or("Selected window");
+                        format!("WINDOW\n\n{}\n\nFull window includes compositor borders.\n\nWindow content excludes compositor borders.\n\nPage area opens a frozen-frame selector: draw around the webpage itself, leaving tabs and address bar outside.", title)
+                    }
+                    _ => format!("SETTINGS\n\nPlatform: {}\n\nScreenshot folder\n{}\n\nD  Edit path\nESC returns", platform::operating_system(), config::screenshot_dir().map(|p| p.display().to_string()).unwrap_or_default()),
                 };
-
-                let mut state = ListState::default();
-                if !items.is_empty() {
-                    state.select(Some(selected));
+                f.render_widget(Paragraph::new(sidebar).style(Style::default().fg(Color::Gray))
+                    .block(Block::default().title(" SYSTEM ").borders(Borders::ALL).border_style(Style::default().fg(Color::DarkGray))), body[0]);
+                let title = match stage { 0 => " WORKSPACES ", 1 => " WORKSPACE CONTENTS ", 2 => " CAPTURE MODE ", _ => " SETTINGS " };
+                if stage == 3 {
+                    let value = edit_dir.as_deref().unwrap_or_else(|| settings.screenshot_dir.as_ref().and_then(|p| p.to_str()).unwrap_or("Default Pictures/CyberShot"));
+                    f.render_widget(Paragraph::new(format!("SCREENSHOT DIRECTORY\n\n{}\n\nD  Edit path\nENTER  Save path\nESC  Cancel / Back" , value))
+                        .block(Block::default().title(title).borders(Borders::ALL).border_style(Style::default().fg(Color::Cyan))), body[1]);
+                } else {
+                    let mut state = ListState::default();
+                    if !items.is_empty() { state.select(Some(selected)); }
+                    f.render_stateful_widget(List::new(items).block(Block::default().title(title).borders(Borders::ALL)
+                        .border_style(Style::default().fg(Color::Cyan)))
+                        .highlight_style(Style::default().fg(Color::Black).bg(Color::Cyan).add_modifier(Modifier::BOLD))
+                        .highlight_symbol("  > "), body[1], &mut state);
                 }
-
-                if stage == 2 {
-                    let value = edit_dir.as_deref().unwrap_or_else(|| settings.screenshot_dir.as_ref().map(|p| p.to_str().unwrap_or("")).unwrap_or("Default Pictures/CyberShot"));
-                    let text = format!("SCREENSHOT DIRECTORY\n\n{}\n\nD  Edit path\nENTER  Save path\nESC  Cancel / Back", value);
-                    f.render_widget(Paragraph::new(text).block(Block::default().title(title).borders(Borders::ALL).border_style(Style::default().fg(Color::Cyan))), body[1]);
-                } else { f.render_stateful_widget(
-                    List::new(items)
-                        .block(
-                            Block::default()
-                                .title(title)
-                                .borders(Borders::ALL)
-                                .border_style(
-                                    Style::default().fg(Color::Cyan)
-                                ),
-                        )
-                        .highlight_style(
-                            Style::default()
-                                .fg(Color::Black)
-                                .bg(Color::Cyan)
-                                .add_modifier(Modifier::BOLD),
-                        )
-                        .highlight_symbol("  > "),
-                    body[1],
-                    &mut state,
-                ); }
-
-                let footer = if stage == 2 { " s Settings   d Edit folder   ENTER Save   ESC Back " } else if stage == 0 {
-                    " ↑/↓ Navigate   ENTER Choose   s Settings   ESC Exit "
-                } else {
-                    " ↑/↓ Navigate   ENTER Capture   W Capture Workspace   BACKSPACE Back "
+                let footer = match stage {
+                    0 => " ↑/↓ Navigate   ENTER Choose workspace   s Settings   ESC Exit ",
+                    1 => " ↑/↓ Navigate   ENTER Select   BACKSPACE Back ",
+                    2 => " ↑/↓ Navigate   ENTER Capture   BACKSPACE Back ",
+                    _ => " d Edit folder   ENTER Save   ESC Back ",
                 };
-
-                f.render_widget(
-                    Paragraph::new(format!("{}  |  {}", footer, msg))
-                        .style(Style::default().fg(Color::Yellow))
-                        .block(Block::default().borders(Borders::ALL)),
-                    outer[2],
-                );
+                f.render_widget(Paragraph::new(format!("{}  |  {}", footer, msg)).style(Style::default().fg(Color::Yellow))
+                    .block(Block::default().borders(Borders::ALL)), outer[2]);
             })?;
 
             if let Event::Key(k) = event::read()? {
                 match k.code {
-                    KeyCode::Esc if stage == 2 && edit_dir.is_some() => {
+                    KeyCode::Esc if stage == 3 && edit_dir.is_some() => {
                         edit_dir = None;
                         msg = "Folder edit cancelled".into();
                     }
-                    KeyCode::Esc if stage == 2 => {
+                    KeyCode::Esc if stage == 3 => {
                         stage = 0;
-                        msg = "Returned to capture".into();
+                        selected = ws_selected;
+                        msg = "Returned to workspaces".into();
                     }
                     KeyCode::Esc => break,
-
                     KeyCode::Char(c)
-                        if stage == 2 && edit_dir.is_some() && !c.is_control() && c != '\0' =>
+                        if stage == 3 && edit_dir.is_some() && !c.is_control() && c != '\0' =>
                     {
                         if let Some(value) = edit_dir.as_mut() {
                             value.push(c);
                         }
                     }
-                    KeyCode::Backspace if stage == 2 && edit_dir.is_some() => {
+                    KeyCode::Backspace if stage == 3 && edit_dir.is_some() => {
                         if let Some(value) = edit_dir.as_mut() {
                             value.pop();
                         }
                     }
-                    KeyCode::Enter if stage == 2 && edit_dir.is_some() => {
+                    KeyCode::Enter if stage == 3 && edit_dir.is_some() => {
                         let value = edit_dir.take().unwrap_or_default();
                         if value.trim().is_empty() {
                             msg = "Folder path cannot be empty".into();
@@ -239,87 +178,73 @@ pub fn capture_tui() -> Result<()> {
                             msg = "Screenshot folder saved".into();
                         }
                     }
-                    KeyCode::Char('d') if stage == 2 && edit_dir.is_none() => {
+                    KeyCode::Char('d') if stage == 3 && edit_dir.is_none() => {
                         edit_dir = Some(config::screenshot_dir()?.display().to_string());
                         msg = "Type the new path; ENTER saves".into();
                     }
-                    KeyCode::Backspace if stage == 1 => {
-                        stage = 0;
-                        selected = ws_selected;
-                        msg = String::from("Returned to workspace selection");
-                    }
-
-                    KeyCode::Left if stage == 1 => {
-                        stage = 0;
-                        selected = ws_selected;
-                        msg = String::from("Returned to workspace selection");
-                    }
-
                     KeyCode::Char('s') if stage == 0 => {
-                        stage = 2;
+                        stage = 3;
                         selected = 0;
                         msg = "Settings opened".into();
                     }
-                    KeyCode::Up => {
-                        selected = selected.saturating_sub(1);
+                    KeyCode::Backspace | KeyCode::Left if stage == 2 => {
+                        stage = 1;
+                        selected = window_selected + 1;
+                        msg = "Choose another window".into();
                     }
-
-                    KeyCode::Down => {
-                        selected = selected.saturating_add(1);
+                    KeyCode::Backspace | KeyCode::Left if stage == 1 => {
+                        stage = 0;
+                        selected = ws_selected;
+                        msg = "Choose a workspace".into();
                     }
-
-                    KeyCode::Char('w') if stage == 1 => {
-                        capture::workspace(ws_id)?;
-                        msg = String::from("Workspace captured");
-                        break;
-                    }
-
+                    KeyCode::Up => selected = selected.saturating_sub(1),
+                    KeyCode::Down => selected = selected.saturating_add(1),
                     KeyCode::Enter if stage == 0 => {
-                        if generic_capture {
-                            match selected {
-                                0 => capture::full()?,
-                                1 => capture::region()?,
-                                _ => {}
-                            }
-                            break;
-                        }
                         if let Some(w) = work.get(selected) {
                             ws_selected = selected;
                             ws_id = w.id;
-
-                            let mut c = config::load()?;
-                            c.selected_workspace = Some(ws_id);
-                            config::save(&c)?;
-
+                            let mut cfg = config::load()?;
+                            cfg.selected_workspace = Some(ws_id);
+                            config::save(&cfg)?;
                             stage = 1;
                             selected = 0;
-                            msg = String::from("Select a window to capture");
+                            msg = "Choose the workspace or one of its windows".into();
                         }
                     }
-
                     KeyCode::Enter if stage == 1 => {
-                        if wins.get(selected).is_some() {
-                            capture::window_by_index(ws_id, selected + 1, false)?;
-                            msg = String::from("Window captured");
+                        if selected == 0 {
+                            capture::workspace(ws_id)?;
+                            msg = "Workspace captured".into();
                             break;
                         }
+                        if selected <= wins.len() {
+                            window_selected = selected - 1;
+                            stage = 2;
+                            selected = 0;
+                            msg = "Choose full window, compositor content, or an exact page-area crop".into();
+                        }
                     }
-
+                    KeyCode::Enter if stage == 2 => {
+                        let mode = match selected {
+                            0 => capture::WindowCaptureMode::Full,
+                            1 => capture::WindowCaptureMode::Content,
+                            _ => capture::WindowCaptureMode::Page,
+                        };
+                        capture::window_by_index(ws_id, window_selected + 1, mode)?;
+                        msg = "Window captured".into();
+                        break;
+                    }
                     _ => {}
                 }
             }
         }
-
         Ok(())
     })();
-
     disable_raw_mode()?;
     execute!(term.backend_mut(), LeaveAlternateScreen)?;
     term.show_cursor()?;
-
     result
 }
-
 fn file_icon(path: &Path) -> &'static str {
     if path.is_dir() {
         return "📁";

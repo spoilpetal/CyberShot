@@ -123,3 +123,32 @@ fi
 
 echo "CyberShot installation finished. Selected command(s) are in $BIN_DIR."
 case ":$PATH:" in *":$BIN_DIR:"*) ;; *) echo "Add this to your shell profile if needed: export PATH=\"$BIN_DIR:\$PATH\"" ;; esac
+
+# Offer a real Hyprland shortcut integration where a supported config exists.
+if [[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua" || -f "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf" ]]; then
+  echo
+  echo "Hyprland configuration detected."
+  if ask_yes_no "Install a CyberShot area-selection shortcut (default SUPER+SHIFT+C)?"; then
+    read -r -p "Shortcut [SUPER SHIFT C]: " shortcut
+    shortcut="${shortcut:-SUPER SHIFT C}"
+    executable="$BIN_DIR/cybershot"
+    [[ -x "$BIN_DIR/csb" ]] && executable="$BIN_DIR/csb"
+    if "$ROOT/scripts/manage-shortcut.sh" install "$executable" "$shortcut"; then
+      "$executable" keybind enable --shortcut "$shortcut"
+      if command -v hyprctl >/dev/null 2>&1; then
+        hyprctl reload >/dev/null 2>&1 || echo "Note: reload Hyprland configuration manually."
+      fi
+      echo "Shortcut installed. It launches the same region selector as 'csb select'."
+    else
+      echo "Shortcut was not installed. Existing configuration was left unchanged."
+    fi
+  else
+    echo "Skipped shortcut integration. You can configure your desktop shortcut manually; command: csb hotkey"
+  fi
+elif [[ "$(uname -s)" == "Linux" ]]; then
+  shortcut_executable="$BIN_DIR/cybershot"
+  [[ -x "$BIN_DIR/csb" ]] && shortcut_executable="$BIN_DIR/csb"
+  echo "No Hyprland config detected. No global shortcut was changed."
+  echo "For GNOME/KDE/other desktops, create a custom shortcut running: $shortcut_executable hotkey"
+  echo "Enable its trigger with: $shortcut_executable keybind enable"
+fi

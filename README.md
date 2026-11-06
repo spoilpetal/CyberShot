@@ -1,4 +1,4 @@
-<h1 align="center">CyberShot</h1>
+# CyberShot
 
 <p align="center">
   <strong>A terminal-first screenshot tool built with Rust</strong><br>
@@ -11,7 +11,7 @@
   <a href="https://github.com/zaynkhan100110/CyberShot/releases">Releases</a>
 </p>
 
-CyberShot is a standalone, keyboard-driven screenshot utility. It has two application TUIs: a combined capture/settings interface and a screenshot History. The `files` command opens a separate file-manager interface.
+CyberShot is a standalone, keyboard-driven screenshot utility. It has two application TUIs: a combined capture/settings interface and a screenshot History. The `files` command opens a separate file-manager interface. It does not require CyberClip or another Cyber* application.
 
 ## Features
 
@@ -25,65 +25,62 @@ CyberShot is a standalone, keyboard-driven screenshot utility. It has two applic
 - Configurable screenshot directory.
 - No dependency on CyberClip.
 
-
-
-## ScreenShot (using <a href="https://github.com/zaynkhan100110/CyberShot">CyberShot</a>)
-
-
-## System File Manager
-
-![File Manager](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/file_manager.png)
-
-- [About History](#general)
-
-### Tui History   
-
-![History](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/tui-history.png)
-
-### Workplace Show
-
-![Workplace](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/workspace_show.png)
- 
-### Workplace window show
-
-![Window](https://raw.githubusercontent.com/spoilpetal/Picture_Vault/main/CyberShot/CyberShot-0.2.0/window_show.png)
-
-
-
 ## Commands
 
 | Command | Description |
 |---|---|
-| `csb` or `csb tui` | Open capture and settings TUI |
+| `cybershot` / `csb` or `cybershot tui` | Open the workspace-first capture TUI |
+| `cybershot --help` / `cybershot help` | Show the full command guide |
+| `cybershot help <command>` | Show detailed help for a command |
+| `csb show work` | List available workspaces and their IDs |
+| `csb show wind --workspace <ID>` | List windows in the specified workspace |
+| `csb sl work <NUMBER>` | Save a workspace using its position in `show work` |
+| `csb capture workspace <NUMBER>` | Capture the workspace at the displayed position in `show work` |
+| `csb capture window <NUMBER> --workspace <ID> --mode full` | Capture a window including its compositor border |
+| `csb capture window <NUMBER> --workspace <ID> --mode content` | Capture the window surface without the compositor border |
+| `csb capture window <NUMBER> --workspace <ID> --mode page` | Interactively crop only the webpage viewport, excluding browser tabs and address bar |
+| `csb capture full` | Capture the entire desktop / all displays |
+| `csb capture region` | Select and capture a screen region |
 | `csb history` | Browse, open, copy, rename, or delete screenshots |
 | `csb files` | Open the two-pane file manager |
-| `csb capture full` | Capture all available displays / the desktop |
-| `csb capture region` | Select a screen region |
-| `csb capture work` | Capture the selected/current desktop |
-| `csb capture wind <number>` | Capture a listed window |
-| `csb capture wind <number> --noh` | Capture the window with the top 32 px excluded |
-| `csb show work` | List available workspaces/desktops |
-| `csb sl work <number>` | Select a workspace where switching is supported |
-| `csb show wind` | List windows in the selected/current workspace |
 | `csb location` | Print the screenshot directory |
-| `csb select` | Start the platform region selector |
 | `csb keybind enable [--shortcut "..."]` | Enable the externally assigned shortcut trigger |
 | `csb keybind disable` | Disable the shortcut trigger without removing the OS shortcut |
 | `csb keybind status` | Show shortcut-trigger state |
 | `csb hotkey` | Run region capture when the shortcut trigger is enabled |
 
-`csb capture wind` uses the order shown by `csb show wind`. `--noh` excludes a fixed 32-pixel strip at the top of the selected window; this is intended for title bars and may need adjustment for unusual desktop themes or scaling.
+When using `capture window`, window numbering matches `show wind --workspace ID`. If `--workspace` is omitted, CyberShot uses the workspace saved by `sl work NUMBER`. `--mode full` is the default. On Hyprland, `--mode content` trims the configured compositor border. Application-drawn browser controls (tabs, address bar, toolbar) are part of the application surface and cannot be identified reliably from generic window geometry. Use `--mode page` to open a frozen-frame selector and draw a crop around just the webpage viewport. This is an explicit interactive crop, not automatic browser chrome detection.
+
+### Command help
+
+```sh
+cybershot --help
+cybershot help
+cybershot help capture
+cybershot help keybind enable
+cybershot capture --help
+```
+
+Each command documents its purpose, arguments/options, and examples. Screen-level `capture full` and `capture region` remain available in the CLI, but the main TUI follows the workspace/window workflow described below.
 
 ## Keyboard controls
 
 ### Capture TUI
 
+The capture interface follows a three-step workflow:
+1. **Choose a workspace.** The first screen lists detected workspaces.
+2. **Choose the capture target.** The next screen starts with **Capture entire workspace**, followed by the windows in that workspace.
+3. **Choose the window mode.** For an individual window, choose **Full window** (include compositor borders), **Window content** (trim compositor borders), or **Page area** (draw a crop around the webpage viewport, excluding browser tabs and address bar).
+
+Controls:
 - `↑` / `↓`: navigate
-- `Enter`: choose workspace/window or capture
-- `s`: open Settings
+- `Enter`: choose a workspace, capture target, or window mode
+- `Backspace` / `Left`: return to the previous step
+- `s`: open Settings from the workspace screen
 - `d`: edit the screenshot directory in Settings
-- `Backspace`: return from window list to workspace list
 - `Esc`: go back / exit
+
+**Content-only limitation:** compositor borders can be trimmed using the desktop's reported border width. Client-side decorations (for example, browser tabs, toolbar, or an application-drawn title bar) are rendered as part of the application surface and are not reliably distinguishable from the content area. Choose **Page area** to interactively draw the exact webpage viewport crop on the frozen desktop image.
 
 ### History
 
@@ -163,45 +160,40 @@ chmod +x install.sh
 ./install.sh
 ```
 
-The installer checks for existing `cybershot`/`csb` commands and known desktop shortcut or shell-alias references before installing. It asks which command name(s) to install: `cybershot`, `csb`, or both. Existing files are never replaced without confirmation. Normally it builds the release binary; set `CYBERSHOT_SKIP_BUILD=1` to reuse an already-built `target/release/cybershot` without starting another build. On Linux, GTK4 development files are required to build the frozen-frame region selector. Ensure `~/.local/bin` is on your `PATH`.
+The Linux installer checks for existing `cybershot`/`csb` commands and known desktop shortcut or shell-alias references before installing. It asks which command name(s) to install: `cybershot`, `csb`, or both. Existing files are never replaced without confirmation. Normally it builds the release binary; set `CYBERSHOT_SKIP_BUILD=1` to reuse an already-built `target/release/cybershot`. On Linux, GTK4 development files are required to build the frozen-frame region selector. Ensure `~/.local/bin` is on your `PATH`.
 
-The uninstaller is interactive. You can remove either command name independently, remove both while keeping data, or choose a full uninstall. A full uninstall asks separately before deleting settings and the default screenshots folder; screenshots and settings are preserved unless you confirm their deletion.
+On macOS, run `./install-macos.sh`; on Windows, run `./install.ps1` from PowerShell. These build the native binary and install `cybershot`, `csb`, or both. The matching uninstallers are `uninstall-macos.sh` and `uninstall.ps1`. They preserve settings and screenshots. The Linux `uninstall.sh` also removes only the CyberShot-managed Hyprland shortcut block if you approve it; it creates another backup and never deletes unrelated bindings.
 
-## Keyboard shortcut toggle (all supported platforms)
+## Keyboard shortcuts
 
-CyberShot provides one cross-platform command for a desktop/OS keyboard shortcut: `csb hotkey`. The operating system or desktop environment registers the physical key combination; CyberShot does not install a background hotkey daemon or silently edit system shortcut settings.
-
-First enable the trigger:
+`csb hotkey` is the common entry point for a desktop shortcut. Enable its trigger first:
 
 ```sh
-csb keybind enable --shortcut "Super+Shift+S"
+csb keybind enable --shortcut "Super+Shift+C"
 csb keybind status
 ```
 
-Use your preferred shortcut label in place of the example. Then create a custom shortcut in your desktop/OS settings and set its command to `csb hotkey` (or the full path to the executable if `csb` is not on the PATH). The shortcut launches the existing native region selector. To temporarily stop it working without deleting the OS shortcut, run:
+The optional `--shortcut` value is a label saved in CyberShot; it does not itself register a physical key combination. `csb keybind disable` safely disables the trigger without removing the operating-system shortcut.
 
-```sh
-csb keybind disable
-```
+### Linux / Hyprland
 
-Turn it back on with `csb keybind enable`. The optional `--shortcut` value is a display label only; it does not register or validate a physical key combination.
+During installation, if a Hyprland config is detected, the installer offers to add `SUPER SHIFT, C` (or the shortcut you enter). It supports both `hyprland.lua` and traditional `hyprland.conf`, creates a timestamped backup, adds a clearly marked CyberShot-owned block, checks for a possible existing binding, and asks before making changes. It never rewrites the whole config. If the chosen key is already bound, installation stops without changing that binding; choose another shortcut and rerun the installer. The uninstaller can remove only the marked CyberShot block.
 
-### Linux
-
-- **Hyprland (traditional hyprland.conf):** add a bind such as `bind = SUPER SHIFT, S, exec, csb hotkey`, then reload the configuration. If your Hyprland setup uses the Lua config provider, add the equivalent command binding using the binding API for your installed config; the traditional line above is not Lua syntax.
-- **GNOME:** Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts. Add a shortcut with command `csb hotkey`, then assign the desired key combination.
-- **KDE Plasma:** System Settings → Keyboard → Shortcuts → Add New → Command or Script. Set the command to `csb hotkey` and assign a key combination.
-- **Other desktop environments:** use the desktop's custom-shortcut settings and launch `csb hotkey`.
+On GNOME, KDE Plasma, Sway, i3, XFCE, and other desktops, use the desktop's custom-shortcut settings and set the command to the absolute path to `csb hotkey` (for example `~/.local/bin/csb hotkey`). Then run `csb keybind enable`. CyberShot does not silently edit those desktop-specific settings.
 
 ### Windows
 
-Create a Windows shortcut whose target runs `csb hotkey` (or the full path to `cybershot.exe` followed by `hotkey`). Open the shortcut's Properties and set its **Shortcut key**. Windows may require the shortcut to be on the Desktop or in the Start Menu for the shortcut key to work. Enable the CyberShot trigger with `csb keybind enable` first.
+Create a Windows shortcut targeting the installed `cybershot.exe` or `csb.exe` with the argument `hotkey`. Set its Shortcut key in the shortcut's Properties, then run `csb.exe keybind enable`.
 
 ### macOS
 
-Create an Automator Quick Action that receives no input and runs the shell command `csb hotkey`. Save it, then open System Settings → Keyboard → Keyboard Shortcuts → Services and assign a shortcut to that Quick Action. Enable the CyberShot trigger with `csb keybind enable` first. Ensure the command is available in the shell PATH used by the Quick Action; otherwise use the full executable path.
+Create an Automator Quick Action that runs the installed executable with the `hotkey` argument, then assign it in System Settings → Keyboard → Keyboard Shortcuts. Run `csb keybind enable`. Ensure the Quick Action uses the full executable path.
 
-**Important:** the CLI toggle controls whether `csb hotkey` performs a capture. It does not create, remove, or globally register the physical key combination. That registration remains under your control in the platform's own shortcut settings.
+### TTY / headless sessions
+
+The CLI and terminal interfaces remain usable without a desktop shortcut. A pure TTY has no graphical display on which to show an interactive region-selection overlay, so global graphical region shortcuts require a graphical session.
+
+**Capture behavior:** on Linux Wayland, `csb hotkey` launches the same frozen-frame selection overlay as `csb select`; other supported capture backends use their native region selector.
 
 ## Configuration and screenshots
 
@@ -211,7 +203,7 @@ Create an Automator Quick Action that receives no input and runs the shell comma
 
 ## GitHub Actions
 
-- **CI** runs `cargo check --locked --all-targets` and `cargo test --locked` on Ubuntu, Windows, and macOS. The repository does not currently include a dedicated formatting-check step.
+- **CI** runs formatting, `cargo check --locked --all-targets`, and `cargo test --locked` on Ubuntu, Windows, and macOS.
 - **Release** builds native binaries when a tag matching `v*` is pushed and attaches the artifacts to a GitHub Release.
 
 A green CI run verifies compilation on the corresponding GitHub-hosted runners. It does not replace interactive testing on each desktop session, particularly Wayland compositor permissions and macOS Accessibility/Screen Recording permissions.
@@ -220,17 +212,8 @@ A green CI run verifies compilation on the corresponding GitHub-hosted runners. 
 
 - Native workspace switching is implemented for Hyprland and X11. On Windows and macOS, CyberShot reports the current desktop and captures it; switching between virtual desktops/Spaces is not implemented.
 - Generic non-Hyprland Wayland window discovery is not available because Wayland does not provide a universal window-enumeration protocol. Full-screen and region capture remain available through `grim`/`slurp`.
-- Global shortcut registration is intentionally managed by the user in the operating system/desktop. Configure it to launch `csb hotkey`, then use `csb keybind enable` / `disable` to control the trigger.
+- Automated global shortcut installation currently targets Hyprland only. Other desktop environments and OSes use their native shortcut settings as documented above.
 - The file-manager copy buffer is internal to the active TUI session.
-
-## General
-- Why history don't show any logs ? <br>
- Ans.The ``History`` only records when you capture using cli
-- Where does my captured saved ? <br>
- Ans.The screenshot saved inside the same directory from where you give commands in cli or capture using Tui a folder named ```CyberShot```
-- Why the `File Manager` isn't behaving like [CyberClip](https://github.com/spoilpetal/CyberClip) ? </br>
- Ans. The `File Manager` inside [CyberShot](https://github.com/zaynkhan100110/CyberShot) is specifically designed for preview image files in full screen. But this have some basic functionality 
-
 
 ## Contributing and bug reports
 

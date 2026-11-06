@@ -63,6 +63,12 @@ pub fn workspaces() -> Result<Vec<Workspace>> {
 pub fn windows(workspace: i64) -> Result<Vec<Window>> {
     let raw = hypr(&["-j", "clients"])?;
     let clients: Vec<ClientJson> = serde_json::from_str(&raw)?;
+    let border_size = hypr(&["-j", "getoption", "general:border_size"])
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .and_then(|value| value.get("int").and_then(|v| v.as_i64()))
+        .unwrap_or(0)
+        .max(0);
     Ok(clients
         .into_iter()
         .filter(|c| c.workspace.id == workspace)
@@ -71,6 +77,7 @@ pub fn windows(workspace: i64) -> Result<Vec<Window>> {
             app: c.app,
             at: c.at,
             size: c.size,
+            border_size,
         })
         .collect())
 }

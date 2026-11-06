@@ -26,6 +26,23 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y pkg-config libgtk-4-dev
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Check installer shell syntax
+        if: runner.os != 'Windows'
+        run: |
+          bash -n install.sh uninstall.sh install-macos.sh uninstall-macos.sh scripts/manage-shortcut.sh scripts/test-shortcut-integration.sh
+          bash scripts/test-shortcut-integration.sh
+      - name: Check PowerShell installer syntax
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $files = @('install.ps1', 'uninstall.ps1')
+          foreach ($file in $files) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw ($errors | Out-String) }
+          }
       - name: Compile all targets
         run: cargo check --locked --all-targets
       - name: Run tests

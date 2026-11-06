@@ -40,7 +40,11 @@ pub fn run() -> Result<()> {
             eprintln!("CyberShot overlay: {e:#}");
         }
     });
-    app.run();
+    // Do not pass the process arguments (for example, the `hotkey` subcommand)
+    // to GApplication. GTK otherwise interprets them as files to open and emits
+    // "This application can not open files" instead of activating the selector.
+    // Supply only argv[0], as this application does not accept file arguments.
+    app.run_with_args(&["cybershot-selector"]);
     let _ = std::fs::remove_file(&snapshot);
     Ok(())
 }
